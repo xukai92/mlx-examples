@@ -108,6 +108,11 @@ def build_parser():
         help="Evaluate on the test set after training",
     )
     parser.add_argument(
+        "--no-adaptar",
+        action="store_true",
+        help="",
+    )
+    parser.add_argument(
         "--test-batches",
         type=int,
         default=500,
@@ -269,7 +274,9 @@ def train(model, train_set, val_set, optimizer, loss, tokenizer, args):
             val_loss = evaluate(
                 model, val_set, loss, tokenizer, args.batch_size, args.val_batches
             )
+            epoch = (it * args.batch_size) // len(train_set)
             print(
+                f"Epoch {epoch + 1}: "
                 f"Iter {it + 1}: "
                 f"Val loss {val_loss:.3f}, "
                 f"Val took {(time.perf_counter() - stop):.3f}s"
@@ -279,10 +286,12 @@ def train(model, train_set, val_set, optimizer, loss, tokenizer, args):
 
         # Save adapter weights if needed
         if (it + 1) % args.save_every == 0:
+            a, b = args.adapter_file.split(".")
+            fn = f"{a}-{it+1:03d}.{b}"
             mx.savez(
-                args.adapter_file, **dict(tree_flatten(model.trainable_parameters()))
+                fn, **dict(tree_flatten(model.trainable_parameters()))
             )
-            print(f"Iter {it + 1}: Saved adapter weights to {args.adapter_file}.")
+            print(f"Iter {it + 1}: Saved adapter weights to {fn}.")
 
 
 def generate(model, prompt, tokenizer, args):
@@ -306,6 +315,8 @@ def generate(model, prompt, tokenizer, args):
             skip = len(s) - 1
     print(tokenizer.decode(tokens)[skip:], flush=True)
     print("=" * 10)
+    print(tokenizer.decode(tokens))
+    print("=" * 10)
     if len(tokens) == 0:
         print("No tokens generated for this prompt")
         return
@@ -322,11 +333,14 @@ if __name__ == "__main__":
 
     # Freeze all layers other than LORA linears
     model.freeze()
-    for l in model.model.layers[len(model.model.layers) - args.lora_layers :]:
-        l.self_attn.q_proj = LoRALinear.from_linear(l.self_attn.q_proj)
-        l.self_attn.v_proj = LoRALinear.from_linear(l.self_attn.v_proj)
-        if hasattr(l, "block_sparse_moe"):
-            l.block_sparse_moe.gate = LoRALinear.from_linear(l.block_sparse_moe.gate)
+    if not args.no_adaptar:
+        for l in model.model.layers[len(model.model.layers) - args.lora_layers :]:
+            l.self_attn.q_proj = LoRALinear.from_linear(l.self_attn.q_proj)
+            l.self_attn.v_proj = LoRALinear.from_linear(l.self_attn.v_proj)
+            if hasattr(l, "block_sparse_moe"):
+                l.block_sparse_moe.gate = LoRALinear.from_linear(l.block_sparse_moe.gate)
+    else:
+        print("LoRA init skipped")
 
     p = sum(v.size for _, v in tree_flatten(model.parameters())) / 10**6
     print(f"Total parameters {p:.3f}M")
@@ -357,7 +371,10 @@ if __name__ == "__main__":
             f"Adapter file {args.adapter_file} missing. "
             "Use --train to learn and save the adapters.npz."
         )
-    model.load_weights(args.adapter_file, strict=False)
+    if not args.no_adaptar:
+        model.load_weights(args.adapter_file, strict=False)
+    else:
+        print("LoRA load skipped")
 
     if args.test:
         print("Testing")

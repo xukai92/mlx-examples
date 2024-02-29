@@ -38,17 +38,18 @@ def _get_classes(config: dict):
         msg = f"Model type {model_type} not supported."
         logging.error(msg)
         raise ValueError(msg)
-
+    print(f"Using {model_type=}")
     arch = MODEL_MAPPING[model_type]
     return arch.Model, arch.ModelArgs
 
 
 def fetch_from_hub(hf_path: str):
-    model_path = snapshot_download(
-        repo_id=hf_path,
-        allow_patterns=["*.json", "*.safetensors", "tokenizer.model"],
-    )
-    weight_files = glob.glob(f"{model_path}/*.safetensors")
+    # model_path = snapshot_download(
+    #     repo_id=hf_path,
+    #     allow_patterns=["*.json", "*.safetensors", "tokenizer.model"],
+    # )
+    model_path = hf_path
+    weight_files = glob.glob(f"{hf_path}/*.safetensors")
     if len(weight_files) == 0:
         raise FileNotFoundError("No safetensors found in {}".format(model_path))
 
