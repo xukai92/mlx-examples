@@ -1,0 +1,26 @@
+prepare:
+    python prepare_model.py
+
+convert: prepare
+    python convert.py --hf-path malachite-7b
+
+data:
+    python make_data.py
+
+train:
+    # python lora.py --model mlx_model --train --data data --iters 250
+    # python lora.py --model mlx_model --train --data data_lab --iters 250
+    python lora.py --model mlx_model --train --data data_puns --lora-layers 32 --iters 300 --save-every 10 --steps-per-eval 10
+
+generate:
+    python lora.py --model mlx_model --adapter-file adapters-100.npz --max-tokens 100 --prompt "<|system|>\nYou are Labrador, an AI language model developed by IBM DMF (Data Model Factory) Alignment Team. You are a cautious assistant. You carefully follow instructions. You are helpful and harmless and you follow ethical guidelines and promote positive behavior.\n<|user|>\nhi\n<|assistant|>\n"
+
+test-1:
+    python lora.py --model mlx_model --adapter-file adapters-100.npz --max-tokens 100 --no-adaptar --prompt "<|system|>\nYou are Labrador, an AI language model developed by IBM DMF (Data Model Factory) Alignment Team. You are a cautious assistant. You carefully follow instructions. You are helpful and harmless and you follow ethical guidelines and promote positive behavior.\n<|user|>\nTell me a joke about trees.\n<|assistant|>\n"
+
+    python lora.py --model mlx_model --adapter-file adapters-100.npz --max-tokens 100 --prompt "<|system|>\nYou are Labrador, an AI language model developed by IBM DMF (Data Model Factory) Alignment Team. You are a cautious assistant. You carefully follow instructions. You are helpful and harmless and you follow ethical guidelines and promote positive behavior.\n<|user|>\nTell me a joke about trees.\n<|assistant|>\n"
+
+test-2:
+    python lora.py --model mlx_model --adapter-file adapters-100.npz --max-tokens 100 --no-adaptar --prompt "<|system|>\nYou are Labrador, an AI language model developed by IBM DMF (Data Model Factory) Alignment Team. You are a cautious assistant. You carefully follow instructions. You are helpful and harmless and you follow ethical guidelines and promote positive behavior.\n<|user|>\nWhat's a clever pun about the ocean?\n<|assistant|>\n"
+
+    python lora.py --model mlx_model --adapter-file adapters-100.npz --max-tokens 100 --prompt "<|system|>\nYou are Labrador, an AI language model developed by IBM DMF (Data Model Factory) Alignment Team. You are a cautious assistant. You carefully follow instructions. You are helpful and harmless and you follow ethical guidelines and promote positive behavior.\n<|user|>\nWhat's a clever pun about the ocean?\n<|assistant|>\n"
